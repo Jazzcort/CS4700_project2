@@ -25,11 +25,14 @@ impl FtpStream {
                     init_messege: "".to_string(),
                 };
 
-                ftp.init_messege = match ftp.read_message() {
-                    Ok(msg) => msg,
-                    Err(e) => return Err(e),
-                };
+                let res = ftp.read_message()?;
 
+                match &res[0..1] {
+                    "2" => {},
+                    _ => {return Err(res)}
+                }
+
+                ftp.init_messege = res;
                 Ok(ftp)
             })
     }
@@ -64,136 +67,180 @@ impl FtpStream {
             }
         }
 
+        dbg!(&res);
+
         Ok(res)
     }
 
     fn send_message(&mut self, msg: String) -> Result<String, String> {
         match self.tcp_control.get_mut().write(msg.as_bytes()) {
-            Ok(len) => Ok(format!("Successfully wrote {} letters", len)),
+            Ok(len) => Ok(format!("Successfully wrote {} bytes", len)),
             Err(e) => Err(format!("Failed to write to the server: {}", e)),
         }
     }
 
-    pub fn login(mut self, username: &str, password: &str) -> Result<String, String> {
-        self.send_message("USER jazzcort\r\n".to_string());
-        dbg!(self.read_message());
+    pub fn login(&mut self, username: &str, password: &str) -> Result<String, String> {
+        self.send_message("USER jazzcort\r\n".to_string())?;
+        let res = self.read_message()?;
+        match &res[0..1] {
+            "2"|"3" => {},
+            _ => {return Err(res)}
+        }
 
         self.send_message(
             "PASS 7a14b3a17a988de5849061a25516f8c5eaf8a16e3202ca966b6b0bfe820d7c01\r\n".to_string(),
-        );
-        dbg!(self.read_message());
+        )?;
+        let res = self.read_message()?;
+        match &res[0..1] {
+            "2" => {},
+            _ => {return Err(res)}
+        }
 
-        self.send_message("TYPE I\r\n".to_string());
-        dbg!(self.read_message());
+        self.send_message("TYPE I\r\n".to_string())?;
+        let res = self.read_message()?;
+        match &res[0..1] {
+            "2" => {},
+            _ => {return Err(res)}
+        }
 
-        self.send_message("MODE S\r\n".to_string());
-        dbg!(self.read_message());
 
-        self.send_message("STRU F\r\n".to_string());
-        dbg!(self.read_message());
+        self.send_message("MODE S\r\n".to_string())?;
+        let res = self.read_message()?;
+        match &res[0..1] {
+            "2" => {},
+            _ => {return Err(res)}
+        }
 
-        // self.send_message("PASV F\r\n".to_string());
-        // let ip_message = self.read_message().unwrap();
-        // dbg!(&ip_message);
-        // let port_re: Regex = Regex::new(r"\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)").unwrap();
-        // let cap = port_re.captures(&ip_message).unwrap();
+        self.send_message("STRU F\r\n".to_string())?;
+        let res = self.read_message()?;
+        match &res[0..1] {
+            "2" => {},
+            _ => {return Err(res)}
+        }
 
-        // let ip1: u8 = cap.get(1).unwrap().as_str().parse().unwrap();
-        // let ip2: u8 = cap.get(2).unwrap().as_str().parse().unwrap();
-        // let ip3: u8 = cap.get(3).unwrap().as_str().parse().unwrap();
-        // let ip4: u8 = cap.get(4).unwrap().as_str().parse().unwrap();
-
-        // let ip5: u16 = cap.get(5).unwrap().as_str().parse().unwrap();
-        // let ip6: u16 = cap.get(6).unwrap().as_str().parse().unwrap();
-
-        // let port = (ip5 << 8) + ip6;
-
-        // let mut file_stream =
-        //     TcpStream::connect(format!("{}.{}.{}.{}:{}", ip1, ip2, ip3, ip4, port)).unwrap();
-
-        // let mut file_stream = self.pasv().unwrap();
-
-        // self.ls("./");
-
-        // self.send_message("LIST ./\r\n".to_string());
-        // dbg!(self.read_message());
-
-        // let mut buf: [u8; 256] = [0; 256];
-
-        // file_stream.read(&mut buf);
-
-        // dbg!(String::from_utf8_lossy(&buf));
-
-        // self.send_message("RETR ./nu-seal.png\r\n".to_string());
-        // dbg!(self.read_message());
-
-        // let mut buf: Vec<u8> = vec![];
-
-        // file_stream.read_to_end(&mut buf);
-
-        // let mut f = File::create("./nu-seal.png").unwrap();
-        // f.write(&buf);
-
-        // let res = file_stream.shutdown(std::net::Shutdown::Read);
-        // dbg!(res);
-        // let mut f = File::open("test.txt").unwrap();
-        // let mut data: Vec<u8> = vec![];
-        // f.read_to_end(&mut data);
-
-        // self.send_message("STOR ./test13.txt\r\n".to_string());
-        // dbg!(self.read_message());
-
-        // let a = file_stream.write(&data);
-
-        // dbg!(a);
-
-        // let mut buf: [u8; 256] = [0; 256];
-
-        // file_stream.read(&mut buf);
-
-        // dbg!(String::from_utf8_lossy(&buf));
-
-        dbg!(self.rm("./test2"));
-
-        Ok("rhgieur".to_string())
+        Ok("Successfully logged in".to_string())
     }
 
-    fn read_data_channel(mut stream: TcpStream) -> Result<Vec<u8>, String> {
+    fn read_data_channel(&mut self, mut stream: TcpStream) -> Result<Vec<u8>, String> {
         let mut buf: Vec<u8> = vec![];
-        stream.read_to_end(&mut buf).map_err(|e| format!("{}", e))?;
-        return Ok(buf);
+        match stream.read_to_end(&mut buf).map_err(|e| format!("{}", e)) {
+            Ok(_) => {
+                self.read_message()?;
+                Ok(buf)
+            }
+            Err(e) => {
+                self.read_message()?;
+                Err(e)
+            }
+        }
     }
 
-    pub fn ls(&mut self, path: &str) -> Result<String, String> {
+    fn write_data_channel(
+        &mut self,
+        mut stream: TcpStream,
+        data: Vec<u8>,
+    ) -> Result<String, String> {
+        match stream.write(&data).map_err(|e|format!("{}", e)) {
+            Ok(len) => {
+                stream.shutdown(std::net::Shutdown::Both).map_err(|e| format!("{}", e))?;
+                self.read_message()?;
+                Ok(format!(
+                    "Successfully wrote {} bytes to the data channel",
+                    len
+                ))
+            },
+            Err(e) => {
+                stream.shutdown(std::net::Shutdown::Both).map_err(|e| format!("{}", e))?;
+                self.read_message()?;
+                Err(e)
+            }
+        }
+        
+        
+    }
+
+    pub fn list(&mut self, path: &str) -> Result<String, String> {
         match self.pasv() {
             Ok(stream) => {
                 self.send_message(format!("LIST {}\r\n", path))?;
-                let buf: Vec<u8> = FtpStream::read_data_channel(stream)?;
+                self.read_message()?;
+                let buf: Vec<u8> = self.read_data_channel(stream)?;
                 println!("{}", String::from_utf8_lossy(&buf));
-                Ok(format!("successfully read {} directory listing from the server", path))
+                Ok(format!(
+                    "successfully read {} directory listing from the server",
+                    path
+                ))
             }
             Err(e) => Err(e),
         }
     }
 
-    pub fn mkdir(&mut self, path: &str) -> Result<String, String> {
+    pub fn mkd(&mut self, path: &str) -> Result<String, String> {
         self.send_message(format!("MKD {}\r\n", path))?;
         let res = self.read_message()?;
 
         match &res[0..1] {
-            "2" => {Ok(res)},
-            _ => {Err(res)}
+            "2" => Ok(res),
+            _ => Err(res),
         }
     }
 
-    pub fn rm(&mut self, path: &str) -> Result<String, String> {
+    pub fn rmd(&mut self, path: &str) -> Result<String, String> {
         self.send_message(format!("RMD {}\r\n", path))?;
         let res = self.read_message()?;
 
         match &res[0..1] {
-            "2" => {Ok(res)},
-            _ => {Err(res)}
+            "2" => Ok(res),
+            _ => Err(res),
         }
+    }
+
+    pub fn dele(&mut self, path: &str) -> Result<String, String> {
+        self.send_message(format!("DELE {}\r\n", path))?;
+        let res = self.read_message()?;
+
+        match &res[0..1] {
+            "2" => Ok(res),
+            _ => Err(res),
+        }
+    }
+
+    pub fn stor(&mut self, file_path: &str, server_path: &str) -> Result<String, String> {
+        let mut f = File::open(file_path)
+            .map_err(|_e| format!("can't find the local file wiht given path {}", file_path))?;
+        let mut buf: Vec<u8> = vec![];
+        f.read_to_end(&mut buf).map_err(|e| format!("{}", e))?;
+        let stream = self.pasv()?;
+        self.send_message(format!("STOR {}\r\n", server_path))?;
+        
+        let res = self.read_message()?;
+        match &res[0..1] {
+            "1" => {},
+            _ => {return Err(res)}
+        }
+
+        self.write_data_channel(stream, buf)?;
+
+        Ok(format!(
+            "Successfully transfered {} to {}",
+            file_path, server_path
+        ))
+    }
+
+    pub fn retr(&mut self, file_path: &str, server_path: &str) -> Result<String, String> {
+        let stream = self.pasv()?;
+        self.send_message(format!("RETR {}\r\n", server_path))?;
+        let res = self.read_message()?;
+        match &res[0..1] {
+            "1" => {},
+            _ => {return Err(res)}
+        }
+
+        let buf = self.read_data_channel(stream)?;
+        let mut f = File::create(file_path).map_err(|e| format!("{}", e))?;
+        f.write(&buf).map_err(|e| format!("{}", e))?;
+
+        Ok(format!("Successfully transfered {} to {}", server_path, file_path))
     }
 
     #[allow(unused)]
@@ -216,6 +263,11 @@ impl FtpStream {
             }
         }
 
+        match &ip[0..1] {
+            "2" => {},
+            _ => {return Err(ip)}
+        }
+
         match PORT_REGEX.captures(&ip) {
             Some(cap) => {
                 let ip1: u8 = cap.get(1).unwrap().as_str().parse().unwrap();
@@ -231,7 +283,7 @@ impl FtpStream {
                 return TcpStream::connect(format!("{}.{}.{}.{}:{}", ip1, ip2, ip3, ip4, port))
                     .map_err(|e| format!("can't connect to file stream at {},  error: {}", ip, e));
             }
-            None => return Err(format!("Didn't capture the IP address")),
+            None => return Err(format!("Didn't capture the IP address {}", ip)),
         }
     }
 }

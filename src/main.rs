@@ -19,6 +19,15 @@ fn main() -> Result<(), String> {
 
     dbg!(&ftp.init_messege);
     ftp.login("jazzcort", "7a14b3a17a988de5849061a25516f8c5eaf8a16e3202ca966b6b0bfe820d7c01");
+
+    // dbg!(&ftp.list("./"));
+    // dbg!(&ftp.list("./"));
+    // dbg!(&ftp.mkd("./test3"));
+    // dbg!(&ftp.list("./"));
+    // dbg!(&ftp.stor("./test.txt", "./test3/test.txt"));
+    dbg!(&ftp.retr("test11.txt", "./test3/test.txt"));
+    // dbg!(&ftp.list("./"));
+    // dbg!(&ftp.read_message());
     // let mut buf = [0u8; 5];
     // ftp.tcp_control.read(&mut buf).unwrap();
     // dbg!(String::from_utf8_lossy(&buf));
