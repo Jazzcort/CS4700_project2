@@ -77,17 +77,6 @@ fn extract_param(param: &str) -> Result<(&str, &str, &str, &str, &str), String> 
 fn main() -> Result<(), String> {
 
     let cli = Cli::parse();
-    // dbg!(cli.operation == Operation::Ls);
-    dbg!(&cli);
-    // let a = REGEX_USER.captures(&cli.param1);
-    // dbg!(a);
-
-    let (username, password, host, port, path) = match extract_param(&cli.param1) {
-        Ok(x) => x,
-        Err(e) => return Err(e)
-    };
-
-    dbg!(&username, &password, &host, &port, &path);
 
     match &cli.operation {
         Operation::Ls | Operation::Mkdir | Operation::Rm | Operation::Rmdir => {
