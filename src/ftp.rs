@@ -80,7 +80,7 @@ impl FtpStream {
     }
 
     pub fn login(&mut self, username: &str, password: &str) -> Result<String, String> {
-        self.send_message("USER jazzcort\r\n".to_string())?;
+        self.send_message(format!("USER {}\r\n", username))?;
         let res = self.read_message()?;
         match &res[0..1] {
             "2"|"3" => {},
@@ -88,7 +88,7 @@ impl FtpStream {
         }
 
         self.send_message(
-            "PASS 7a14b3a17a988de5849061a25516f8c5eaf8a16e3202ca966b6b0bfe820d7c01\r\n".to_string(),
+            format!("PASS {}\r\n", password),
         )?;
         let res = self.read_message()?;
         match &res[0..1] {

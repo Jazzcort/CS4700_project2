@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 regex = { git = "https://github.com/rust-lang/regex.git", tag = "1.0.0" }
 lazy_static = "1.4.0"
+clap = { version = "4.4.18", features = ["derive"] }
