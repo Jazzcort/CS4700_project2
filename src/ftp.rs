@@ -11,18 +11,20 @@ lazy_static! {
 }
 
 pub struct FtpStream {
-    pub tcp_control: BufReader<TcpStream>,
-    pub init_messege: String,
+    tcp_control: BufReader<TcpStream>,
+    init_messege: String,
+    verbose_mode: bool
 }
 
 impl FtpStream {
-    pub fn new(hostname: &str, port_num: &str) -> Result<Self, String> {
+    pub fn new(hostname: &str, port_num: &str, v:bool) -> Result<Self, String> {
         TcpStream::connect(format!("{}:{}", hostname, port_num))
             .map_err(|e| format!("connection failed: {}", e))
             .and_then(|stream| {
                 let mut ftp = FtpStream {
                     tcp_control: BufReader::new(stream),
-                    init_messege: "".to_string(),
+                    init_messege: String::new(),
+                    verbose_mode: v
                 };
 
                 let res = ftp.read_message()?;
@@ -67,7 +69,9 @@ impl FtpStream {
             }
         }
 
-        dbg!(&res);
+        if self.verbose_mode {
+            println!("{}", &res);
+        }
 
         Ok(res)
     }

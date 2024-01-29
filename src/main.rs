@@ -1,7 +1,6 @@
-use std::io::{Read, Write, BufRead};
-use std::net::TcpStream;
-use clap::{Args, Error, Parser, ValueEnum};
+use clap::{Parser, ValueEnum};
 use regex::Regex;
+use std::fs;
 
 use ftp::FtpStream;
 mod ftp;
@@ -36,8 +35,8 @@ enum Operation {
 }
 
 lazy_static! {
-    static ref REGEX_USER: Regex = Regex::new(r"ftp://([^:]+)(:.+)?@([^:]+)(:[^@]+)?/(.*)").unwrap();
-    static ref REGEX_ANONYMOUS: Regex = Regex::new(r"ftp://([^:@]+)(:[^@]+)?/([^@]*)").unwrap();
+    static ref REGEX_USER: Regex = Regex::new(r"ftp://([^:]+)(:.+)?@([^:/]+)(:\d+)?/(.*)").unwrap();
+    static ref REGEX_ANONYMOUS: Regex = Regex::new(r"ftp://([^:@/]+)(:\d+)?/([^@]*)").unwrap();
 }
 
 fn extract_param(param: &str) -> Result<(&str, &str, &str, &str, &str), String> {
@@ -69,7 +68,6 @@ fn extract_param(param: &str) -> Result<(&str, &str, &str, &str, &str), String> 
         };
         let path = cap.get(3).unwrap().as_str();
 
-
         Ok((username, password, host, port, path))
     } else {
         Err("Given URL is invalid".to_string())
@@ -79,10 +77,10 @@ fn extract_param(param: &str) -> Result<(&str, &str, &str, &str, &str), String> 
 fn main() -> Result<(), String> {
 
     let cli = Cli::parse();
-    dbg!(cli.operation == Operation::Ls);
+    // dbg!(cli.operation == Operation::Ls);
     dbg!(&cli);
-    let a = REGEX_USER.captures(&cli.param1);
-    dbg!(a);
+    // let a = REGEX_USER.captures(&cli.param1);
+    // dbg!(a);
 
     let (username, password, host, port, path) = match extract_param(&cli.param1) {
         Ok(x) => x,
@@ -98,7 +96,7 @@ fn main() -> Result<(), String> {
                 Err(e) => {return Err(e)}
             };
 
-            let mut ftp = match FtpStream::new(host, if !port.is_empty() {port} else {"21"}) {
+            let mut ftp = match FtpStream::new(host, if !port.is_empty() {port} else {"21"}, cli.verbose) {
                 Ok(stream) => stream,
                 Err(e) => {
                     return Err(e);
@@ -126,6 +124,70 @@ fn main() -> Result<(), String> {
             Ok(())
         },
         _ => {
+            dbg!(&cli.param2);
+
+            match &cli.param2 {
+                Some(p) => {
+                    let r1 = extract_param(&cli.param1);
+                    let r2 = extract_param(&p);
+
+                    match (r1, r2){
+                        // From server
+                        (Ok((username, password, host, port, path)), Err(_)) => {
+                
+                            let mut ftp = match FtpStream::new(host, if !port.is_empty() {port} else {"21"}, cli.verbose) {
+                                Ok(stream) => stream,
+                                Err(e) => {
+                                    return Err(e);
+                                }
+                            };
+
+                            ftp.login(username, password)?;
+
+                            match &cli.operation {
+                                Operation::Cp => {
+                                    ftp.retr(&p, path)?;
+                                },
+                                Operation::Mv => {
+                                    ftp.retr(&p, path)?;
+                                    if let Err(_) = ftp.dele(path) {
+                                        fs::remove_file(&p).map_err(|e| format!("{}", e))?;
+                                    }
+                                }
+                                _ => {}
+                            }
+                        },
+                        // To server
+                        (Err(_), Ok((username, password, host, port, path))) => {
+                            let mut ftp = match FtpStream::new(host, if !port.is_empty() {port} else {"21"}, cli.verbose) {
+                                Ok(stream) => stream,
+                                Err(e) => {
+                                    return Err(e);
+                                }
+                            };
+
+                            ftp.login(username, password)?;
+
+                            match &cli.operation {
+                                Operation::Cp => {
+                                    ftp.stor(&cli.param1, path)?;
+                                },
+                                Operation::Mv => {
+                                    ftp.stor(&cli.param1, path)?;
+                                    fs::remove_file(&cli.param1).map_err(|e| format!("{}", e))?;
+                                },
+                                _ => {}
+                            }
+
+                        },
+                        _ => {return Err("If ARG1 is a local file, then ARG2 must be a URL, and vice-versa.".to_string());}
+
+                    }
+                    
+                },
+                None => {return Err("Didn't provide the second argument for \'cp\' or \'mv\' command".to_string());}
+            }
+
             Ok(())
         }
     }
