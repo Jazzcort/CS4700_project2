@@ -2,7 +2,7 @@ move: complie
 	mv ./target/release/project2-FTP ./4700ftp
 
 complie: client
-	cargo build -r
+	~/.cargo/bin/cargo build -r
 
 # Thanks for Luke Jianu
 client: 
