@@ -8,6 +8,9 @@ mod ftp;
 #[macro_use]
 extern crate lazy_static;
 
+/**
+ * This struct is used to extract the command line arguments.
+ */
 #[derive(Parser, Debug)]
 #[command(author, about, long_about = None)]
 struct Cli {
@@ -24,6 +27,9 @@ struct Cli {
     verbose:  bool
 }
 
+/**
+ * This enum is used to validate and classify the operation field of the Cli struct.
+ */
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 enum Operation {
     Ls,
@@ -34,11 +40,16 @@ enum Operation {
     Mv
 }
 
+// Allocate static memory for REGEX_USER and REGEX_ANONYMOUS
 lazy_static! {
     static ref REGEX_USER: Regex = Regex::new(r"ftp://([^:]+)(:.+)?@([^:/]+)(:\d+)?/(.*)").unwrap();
     static ref REGEX_ANONYMOUS: Regex = Regex::new(r"ftp://([^:@/]+)(:\d+)?/([^@]*)").unwrap();
 }
 
+/**
+ * This function is to extract username, password, host, port, and path from
+ * the given URL.
+ */
 fn extract_param(param: &str) -> Result<(&str, &str, &str, &str, &str), String> {
 
     if REGEX_USER.is_match(param) {
@@ -74,17 +85,24 @@ fn extract_param(param: &str) -> Result<(&str, &str, &str, &str, &str), String> 
     }
 }
 
+/**
+ * This is the main driver of this CLI.
+ */
 fn main() -> Result<(), String> {
 
+    // Parse the command line argument
     let cli = Cli::parse();
 
+    // Check the operation kind
     match &cli.operation {
         Operation::Ls | Operation::Mkdir | Operation::Rm | Operation::Rmdir => {
+            // Extract the parameters that would be used to create the FtpStream and login to the Ftp server
             let (username, password, host, port, path) = match extract_param(&cli.param1) {
                 Ok(x) => x,
                 Err(e) => {return Err(e)}
             };
 
+            // Create the control channel with the ftp server
             let mut ftp = match FtpStream::new(host, if !port.is_empty() {port} else {"21"}, cli.verbose) {
                 Ok(stream) => stream,
                 Err(e) => {
@@ -92,8 +110,10 @@ fn main() -> Result<(), String> {
                 }
             };
 
+            // Login to Ftp server
             ftp.login(username, password)?;
 
+            // Execute desired command
             match &cli.operation {
                 Operation::Ls => {
                     ftp.list(path)?;
@@ -113,15 +133,17 @@ fn main() -> Result<(), String> {
             Ok(())
         },
         _ => {
+            // Check if the second parameter is entered
             match &cli.param2 {
                 Some(p) => {
                     let r1 = extract_param(&cli.param1);
                     let r2 = extract_param(&p);
 
                     match (r1, r2){
-                        // From server
+                        // From server (param1 is an URL and param2 is a local path)
                         (Ok((username, password, host, port, path)), Err(_)) => {
                 
+                            // Create the control channel to the Ftp server
                             let mut ftp = match FtpStream::new(host, if !port.is_empty() {port} else {"21"}, cli.verbose) {
                                 Ok(stream) => stream,
                                 Err(e) => {
@@ -129,6 +151,7 @@ fn main() -> Result<(), String> {
                                 }
                             };
 
+                            // Login to the Ftp server
                             ftp.login(username, password)?;
 
                             match &cli.operation {
@@ -137,6 +160,7 @@ fn main() -> Result<(), String> {
                                 },
                                 Operation::Mv => {
                                     ftp.retr(&p, path)?;
+                                    // Remove the local file if the file deletion is not successful on the server side
                                     if let Err(_) = ftp.dele(path) {
                                         fs::remove_file(&p).map_err(|e| format!("{}", e))?;
                                     }
@@ -144,8 +168,9 @@ fn main() -> Result<(), String> {
                                 _ => {}
                             }
                         },
-                        // To server
+                        // To server (param1 is a local path and param2 is an URL)
                         (Err(_), Ok((username, password, host, port, path))) => {
+                            // Create the control channel to the Ftp server
                             let mut ftp = match FtpStream::new(host, if !port.is_empty() {port} else {"21"}, cli.verbose) {
                                 Ok(stream) => stream,
                                 Err(e) => {
@@ -153,6 +178,7 @@ fn main() -> Result<(), String> {
                                 }
                             };
 
+                            // Login to the Ftp server
                             ftp.login(username, password)?;
 
                             match &cli.operation {
@@ -161,6 +187,7 @@ fn main() -> Result<(), String> {
                                 },
                                 Operation::Mv => {
                                     ftp.stor(&cli.param1, path)?;
+                                    // Remove the local file if the file successfully makes its way to the server
                                     fs::remove_file(&cli.param1).map_err(|e| format!("{}", e))?;
                                 },
                                 _ => {}
