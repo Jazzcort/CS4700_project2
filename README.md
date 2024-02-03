@@ -7,4 +7,4 @@ My project consists of two parts. The first part is the ftp module. In this modu
 The biggest challenge I faced during the project is to use the Regular Expression syntax. I hadn't had too many experiences of dealing with complexing string format and it took time to fully understand how the syntax work in Regular expression. However, after I figured it out, it becomes a very useful tool to extract desired infos from a formatted string.
 
 ## Code Testing
-Fro the teesting, I execute the debug version through my terminal and check if each execution works the way it should be with FileZilla. Also, I test some invalid commands to check the CLI catch the error properly.
+For testing purposes, I run the debug version of my program through the terminal, ensuring that each execution functions as intended when interacting with FileZilla. Additionally, I perform tests with invalid commands to confirm that the Command-Line Interface (CLI) appropriately catches and handles errors.
