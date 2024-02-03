@@ -1,10 +1,12 @@
 # Project 2: FTP Client
 
 ## Approach
-My project consists of two parts. The first part is the ftp module. In this module, I use `TcpSteam`, `std::fs`, and `std::io` to implement a FTP protocal. It contains the functions like `new` (Initialize a FtpStream with host and port number), `login` (Login with given username and password), `list`, `dele`, `mkd`...ect (The rest of the functions is used to send server command to the FTP server). Then, the second part is to use the ftp module I implemented to create a CLI. In this part, I use crates like `clap` and `regex` to helper me extract the command line argument and parameters (host, username, password...etc) from the URL format. Due to the Tcp experience I gained from previous project, everything went pretty smoothly.
+My project is comprised of two main components. The first part is the FTP module, where I employ `TcpStream`, `std::fs`, and `std::io` to implement the FTP protocol. This module features functions such as `new` (to initialize a FtpStream with a specified host and port number), `login` (for logging in with a provided username and password), and other functions like `list`, `dele`, `mkd`, etc., which are designed to send server commands to the FTP server.
+
+The second part involves utilizing the FTP module to create a Command-Line Interface (CLI). For this segment, I leverage crates such as `clap` and `regex` to facilitate the extraction of command-line arguments and parameters (such as host, username, password, etc.) from the URL format. Drawing on my previous experience with TCP, the integration of the FTP module into the CLI proceeded smoothly.
 
 ## Challenge
-The biggest challenge I faced during the project is to use the Regular Expression syntax. I hadn't had too many experiences of dealing with complexing string format and it took time to fully understand how the syntax work in Regular expression. However, after I figured it out, it becomes a very useful tool to extract desired infos from a formatted string.
+The most significant challenge I encountered during the project was mastering Regular Expression syntax. Prior to this project, my experience with handling complex string formats was limited, making it initially challenging to comprehend the intricacies of Regular Expression syntax. However, after investing time and effort into understanding its workings, I gained proficiency in using Regular Expressions as a powerful tool for extracting desired information from formatted strings.
 
 ## Code Testing
 For testing purposes, I run the debug version of my program through the terminal, ensuring that each execution functions as intended when interacting with FileZilla. Additionally, I perform tests with invalid commands to confirm that the Command-Line Interface (CLI) appropriately catches and handles errors.
